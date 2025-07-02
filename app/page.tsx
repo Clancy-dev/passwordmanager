@@ -220,6 +220,8 @@ export default function PasswordManager() {
     return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("")
   }
 
+// thethetevvd
+
   const generateDeviceFingerprint = () => {
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
