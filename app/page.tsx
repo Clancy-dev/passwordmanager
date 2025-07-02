@@ -1706,9 +1706,9 @@ export default function PasswordManager() {
   // Notifications Page
   if (currentPage === "notifications" && currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <Button variant="ghost" onClick={() => setCurrentPage("main")} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Password Manager
@@ -1716,45 +1716,56 @@ export default function PasswordManager() {
           </div>
 
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                    <Bell className="h-6 w-6" />
+                  <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
                     Security Notifications
                   </CardTitle>
-                  <p className="text-gray-600">Monitor security events and suspicious activities</p>
+                  <p className="text-sm sm:text-base text-gray-600 mt-1">
+                    Monitor security events and suspicious activities
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleMarkAllNotificationsAsRead}>
+                <div className="flex flex-col xs:flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleMarkAllNotificationsAsRead}
+                    className="text-xs sm:text-sm bg-transparent"
+                  >
                     Mark All Read
                   </Button>
-                  <Badge variant="secondary">{unreadCount} unread</Badge>
+                  <Badge variant="secondary" className="text-xs sm:text-sm w-fit">
+                    {unreadCount} unread
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               {notifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No security notifications yet.</p>
-                  <p className="text-sm text-gray-400">You'll be notified of any suspicious activities here.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <Bell className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm sm:text-base">No security notifications yet.</p>
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    You'll be notified of any suspicious activities here.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {notifications.map((notification) => (
                     <Card
                       key={notification.id}
                       className={`${!notification.read ? "border-l-4 border-l-blue-500" : ""}`}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge className={getSeverityColor(notification.severity)}>
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <Badge className={`${getSeverityColor(notification.severity)} text-xs`}>
                                 {notification.severity.toUpperCase()}
                               </Badge>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-xs sm:text-sm text-gray-500">
                                 {new Date(notification.timestamp).toLocaleString()}
                               </span>
                               {!notification.read && (
@@ -1764,70 +1775,92 @@ export default function PasswordManager() {
                               )}
                             </div>
 
-                            <h3 className="font-semibold text-gray-900 mb-1">{notification.title}</h3>
-                            <p className="text-gray-700 mb-3">{notification.message}</p>
+                            <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base break-words">
+                              {notification.title}
+                            </h3>
+                            <p className="text-gray-700 mb-3 text-sm break-words">{notification.message}</p>
 
                             {notification.attemptedEmail && (
-                              <div className="mb-3">
-                                <span className="text-sm font-medium text-gray-600">Attempted Email: </span>
-                                <span className="text-sm text-gray-800">{notification.attemptedEmail}</span>
+                              <div className="mb-3 p-2 bg-gray-50 rounded text-xs sm:text-sm">
+                                <span className="font-medium text-gray-600">Attempted Email: </span>
+                                <span className="text-gray-800 break-all">{notification.attemptedEmail}</span>
                               </div>
                             )}
 
                             {notification.failedAttempts && (
-                              <div className="mb-3">
-                                <span className="text-sm font-medium text-gray-600">Failed Attempts: </span>
-                                <span className="text-sm text-red-600 font-semibold">
-                                  {notification.failedAttempts}
-                                </span>
+                              <div className="mb-3 p-2 bg-red-50 rounded text-xs sm:text-sm">
+                                <span className="font-medium text-gray-600">Failed Attempts: </span>
+                                <span className="text-red-600 font-semibold">{notification.failedAttempts}</span>
                               </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg text-sm">
-                              <div>
-                                <div className="flex items-center gap-1 mb-1">
-                                  <Monitor className="h-3 w-3 text-gray-500" />
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-2 sm:p-3 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1 mb-2">
+                                  <Monitor className="h-3 w-3 text-gray-500 flex-shrink-0" />
                                   <span className="font-medium text-gray-600">Device Info</span>
                                 </div>
-                                <p className="text-gray-700 text-xs">Platform: {notification.deviceInfo.platform}</p>
-                                <p className="text-gray-700 text-xs">Screen: {notification.deviceInfo.screen}</p>
-                                <p className="text-gray-700 text-xs">Language: {notification.deviceInfo.language}</p>
-                                <p className="text-gray-700 text-xs">Timezone: {notification.deviceInfo.timezone}</p>
+                                <div className="space-y-1">
+                                  <p className="text-gray-700 break-words">
+                                    <span className="font-medium">Platform:</span> {notification.deviceInfo.platform}
+                                  </p>
+                                  <p className="text-gray-700 break-words">
+                                    <span className="font-medium">Screen:</span> {notification.deviceInfo.screen}
+                                  </p>
+                                  <p className="text-gray-700 break-words">
+                                    <span className="font-medium">Language:</span> {notification.deviceInfo.language}
+                                  </p>
+                                  <p className="text-gray-700 break-words">
+                                    <span className="font-medium">Timezone:</span> {notification.deviceInfo.timezone}
+                                  </p>
+                                </div>
                               </div>
 
                               {notification.locationInfo && (
-                                <div>
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <MapPin className="h-3 w-3 text-gray-500" />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1 mb-2">
+                                    <MapPin className="h-3 w-3 text-gray-500 flex-shrink-0" />
                                     <span className="font-medium text-gray-600">Location Info</span>
                                   </div>
-                                  <p className="text-gray-700 text-xs">IP: {notification.locationInfo.ip}</p>
-                                  <p className="text-gray-700 text-xs">Country: {notification.locationInfo.country}</p>
-                                  <p className="text-gray-700 text-xs">City: {notification.locationInfo.city}</p>
-                                  {notification.locationInfo.latitude && notification.locationInfo.longitude && (
-                                    <p className="text-gray-700 text-xs">
-                                      Coords: {notification.locationInfo.latitude.toFixed(4)},{" "}
-                                      {notification.locationInfo.longitude.toFixed(4)}
+                                  <div className="space-y-1">
+                                    <p className="text-gray-700 break-words">
+                                      <span className="font-medium">IP:</span> {notification.locationInfo.ip}
                                     </p>
-                                  )}
+                                    <p className="text-gray-700 break-words">
+                                      <span className="font-medium">Country:</span>{" "}
+                                      {notification.locationInfo.country || "Unknown"}
+                                    </p>
+                                    <p className="text-gray-700 break-words">
+                                      <span className="font-medium">City:</span>{" "}
+                                      {notification.locationInfo.city || "Unknown"}
+                                    </p>
+                                    {notification.locationInfo.latitude && notification.locationInfo.longitude && (
+                                      <p className="text-gray-700 break-words">
+                                        <span className="font-medium">Coords:</span>{" "}
+                                        {notification.locationInfo.latitude.toFixed(4)},{" "}
+                                        {notification.locationInfo.longitude.toFixed(4)}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
 
                             {notification.screenshot && (
-                              <div className="mt-4">
+                              <div className="mt-3 sm:mt-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <Camera className="h-4 w-4 text-red-600" />
+                                  <Camera className="h-4 w-4 text-red-600 flex-shrink-0" />
                                   <span className="text-sm font-medium text-red-800">Security Camera Capture</span>
                                 </div>
                                 <div className="border-2 border-red-200 rounded-lg p-2 bg-red-50">
-                                  <img
-                                    src={notification.screenshot || "/placeholder.svg"}
-                                    alt="Security capture"
-                                    className="max-w-full h-auto rounded border"
-                                    style={{ maxHeight: "200px" }}
-                                  />
-                                  <p className="text-xs text-red-700 mt-2">
+                                  <div className="overflow-hidden rounded">
+                                    <img
+                                      src={notification.screenshot || "/placeholder.svg"}
+                                      alt="Security capture"
+                                      className="w-full h-auto max-h-48 sm:max-h-64 object-contain rounded border"
+                                    />
+                                  </div>
+                                  <p className="text-xs text-red-700 mt-2 break-words">
                                     ⚠️ This photo was automatically captured during the failed login attempt for security
                                     purposes.
                                   </p>
@@ -1836,12 +1869,13 @@ export default function PasswordManager() {
                             )}
                           </div>
 
-                          <div className="flex gap-2 ml-4">
+                          <div className="flex flex-row sm:flex-col gap-2 sm:ml-4 flex-shrink-0">
                             {!notification.read && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleMarkNotificationAsRead(notification.id)}
+                                className="text-xs sm:text-sm px-2 sm:px-3"
                               >
                                 Mark Read
                               </Button>
@@ -1850,7 +1884,7 @@ export default function PasswordManager() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteNotification(notification.id)}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 px-2 sm:px-3"
                             >
                               <X className="h-4 w-4" />
                             </Button>
