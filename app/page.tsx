@@ -1982,5 +1982,285 @@ export default function PasswordManager() {
     )
   }
 
+  // Add the Profile Page section right after the Notifications Page and before the final return null
+
+  // Profile Page
+  if (currentPage === "profile" && currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-4 sm:mb-6">
+            <Button variant="ghost" onClick={() => setCurrentPage("main")} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Password Manager
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                  <AvatarFallback className="bg-blue-500 text-white text-xl sm:text-2xl">
+                    {currentUser.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-xl sm:text-2xl font-bold">Profile Settings</CardTitle>
+                  <p className="text-sm sm:text-base text-gray-600">Manage your account and security settings</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <Tabs defaultValue="account" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="account">Account</TabsTrigger>
+                  <TabsTrigger value="security">Security</TabsTrigger>
+                </TabsList>
+
+                {/* Account Tab */}
+                <TabsContent value="account" className="space-y-6 mt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="profile-username">Username</Label>
+                      <Input
+                        id="profile-username"
+                        value={profileForm.username || currentUser.username}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
+                        placeholder="Enter your username"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="profile-email">Email</Label>
+                      <Input
+                        id="profile-email"
+                        type="email"
+                        value={profileForm.email || currentUser.email}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="profile-session-timeout">Session Timeout (minutes)</Label>
+                      <Select
+                        value={(profileForm.sessionTimeout || currentUser.sessionTimeout).toString()}
+                        onValueChange={(value) =>
+                          setProfileForm((prev) => ({ ...prev, sessionTimeout: Number(value) }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SESSION_TIMEOUT_OPTIONS.map((option) => (
+                            <SelectItem key={option} value={option.toString()}>
+                              {option} minutes
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      onClick={async () => {
+                        const result = await updateUser({
+                          id: currentUser.id,
+                          username: profileForm.username || currentUser.username,
+                          email: profileForm.email || currentUser.email,
+                          sessionTimeout: profileForm.sessionTimeout || currentUser.sessionTimeout,
+                        })
+                        if (result.success) {
+                          setCurrentUser(result.user!)
+                          toast.success("Profile updated successfully!")
+                        } else {
+                          toast.error(result.error || "Failed to update profile")
+                        }
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                {/* Security Tab */}
+                <TabsContent value="security" className="space-y-6 mt-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Change Password</h3>
+                    <div>
+                      <Label htmlFor="profile-old-password">Current Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="profile-old-password"
+                          type={showProfileOldPassword ? "text" : "password"}
+                          value={profileForm.oldPassword}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, oldPassword: e.target.value }))}
+                          placeholder="Enter current password"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowProfileOldPassword(!showProfileOldPassword)}
+                        >
+                          {showProfileOldPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="profile-new-password">New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="profile-new-password"
+                          type={showProfileNewPassword ? "text" : "password"}
+                          value={profileForm.newPassword}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                          placeholder="Enter new password"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowProfileNewPassword(!showProfileNewPassword)}
+                        >
+                          {showProfileNewPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                      </div>
+                      {profileForm.newPassword && (
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                          <strong>Password Requirements:</strong>
+                          <ul className="mt-1 space-y-1">
+                            <li>• At least 12 characters long</li>
+                            <li>• Contains uppercase and lowercase letters</li>
+                            <li>• Contains numbers and special characters</li>
+                            <li>• No repeated characters</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="profile-confirm-password">Confirm New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="profile-confirm-password"
+                          type={showProfileConfirmPassword ? "text" : "password"}
+                          value={profileForm.confirmPassword}
+                          onChange={(e) => setProfileForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                          placeholder="Confirm new password"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowProfileConfirmPassword(!showProfileConfirmPassword)}
+                        >
+                          {showProfileConfirmPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      onClick={async () => {
+                        if (!profileForm.oldPassword || !profileForm.newPassword || !profileForm.confirmPassword) {
+                          toast.error("All password fields are required!")
+                          return
+                        }
+
+                        if (profileForm.oldPassword !== currentUser.password) {
+                          toast.error("Current password is incorrect!")
+                          return
+                        }
+
+                        if (profileForm.newPassword !== profileForm.confirmPassword) {
+                          toast.error("New passwords do not match!")
+                          return
+                        }
+
+                        const passwordValidation = validatePasswordStrength(profileForm.newPassword)
+                        if (!passwordValidation.isValid) {
+                          toast.error(passwordValidation.message)
+                          return
+                        }
+
+                        const result = await updateUser({
+                          id: currentUser.id,
+                          password: profileForm.newPassword,
+                        })
+
+                        if (result.success) {
+                          setCurrentUser(result.user!)
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            oldPassword: "",
+                            newPassword: "",
+                            confirmPassword: "",
+                          }))
+                          toast.success("Password updated successfully!")
+                        } else {
+                          toast.error(result.error || "Failed to update password")
+                        }
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Update Password
+                    </Button>
+                  </div>
+
+                  <div className="pt-6 border-t">
+                    <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-600">Account Created:</span>
+                        <p className="text-gray-800">{new Date(currentUser.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-600">Last Updated:</span>
+                        <p className="text-gray-800">{new Date(currentUser.updatedAt).toLocaleString()}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-600">Failed Login Attempts:</span>
+                        <p className="text-gray-800">{currentUser.failedAttempts}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-600">Account Status:</span>
+                        <p
+                          className={`font-semibold ${currentUser.lockedUntil && new Date() < currentUser.lockedUntil ? "text-red-600" : "text-green-600"}`}
+                        >
+                          {currentUser.lockedUntil && new Date() < currentUser.lockedUntil ? "Locked" : "Active"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+        <Toaster position="top-right" />
+      </div>
+    )
+  }
+
   return null
 }
