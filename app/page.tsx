@@ -673,7 +673,7 @@ export default function PasswordManager() {
           locationInfo: await getLocationInfo(),
           attemptedEmail: user.email,
           failedAttempts,
-          screenshot,
+          screenshot: screenshot ?? undefined,
         })
       } else {
         toast.error(`Invalid password! ${MAX_LOGIN_ATTEMPTS - failedAttempts} attempts remaining.`)
@@ -689,7 +689,7 @@ export default function PasswordManager() {
           locationInfo: await getLocationInfo(),
           attemptedEmail: user.email,
           failedAttempts,
-          screenshot,
+          screenshot: screenshot ?? undefined,
         })
       }
 
