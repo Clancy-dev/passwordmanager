@@ -482,7 +482,12 @@ export default function PasswordManager() {
       ])
 
       setEntries(passwordEntries)
-      setNotifications(securityNotifications)
+      setNotifications(
+        securityNotifications.map((n: any) => ({
+          ...n,
+          locationInfo: n.locationInfo === null ? undefined : n.locationInfo,
+        }))
+      )
       setUnreadCount(unreadCount)
     } catch (error) {
       console.error("Error loading user data:", error)
@@ -602,7 +607,7 @@ export default function PasswordManager() {
     await updateUser({
       id: user.id,
       failedAttempts: 0,
-      lockedUntil: null,
+      lockedUntil: undefined,
       deviceFingerprint: generateDeviceFingerprint(),
     })
 
