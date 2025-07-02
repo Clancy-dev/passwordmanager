@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  username          String
+  email             String   @unique
+  password          String
+  sessionTimeout    Int      @default(5) // in minutes
+  failedAttempts    Int      @default(0)
+  lockedUntil       DateTime?
+  deviceFingerprint String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  passwordEntries     PasswordEntry[]
+  securityNotifications SecurityNotification[]
+  sessions            Session[]
+  consents            Consent[]
+
+  @@map("users")
+}
+
+model PasswordEntry {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  email       String
+  password    String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_entries")
+}
+
+model SecurityNotification {
+  id               String                    @id @default(auto()) @map("_id") @db.ObjectId
+  type             SecurityNotificationType
+  title            String
+  message          String
+  severity         SecuritySeverity
+  deviceInfo       DeviceInfo
+  locationInfo     LocationInfo?
+  attemptedEmail   String?
+  failedAttempts   Int?
+  screenshot       String? // Base64 encoded image
+  timestamp        DateTime                 @default(now())
+  read             Boolean                  @default(false)
+
+  // Relations
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("security_notifications")
+}
+
+model Session {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  token             String   @unique
+  deviceFingerprint String
+  ipAddress         String
+  userAgent         String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  // Relations
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Consent {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  accepted        Boolean
+  sessionId       String
+  permissions     ConsentPermissions
+  timeToDecision  Int               // milliseconds
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  userId String? @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("consents")
+}
+
+// Embedded types for MongoDB
+type DeviceInfo {
+  userAgent   String
+  platform    String
+  language    String
+  screen      String
+  timezone    String
+  fingerprint String
+}
+
+type LocationInfo {
+  ip        String
+  country   String?
+  city      String?
+  latitude  Float?
+  longitude Float?
+}
+
+type ConsentPermissions {
+  camera   Boolean
+  location Boolean
+  storage  Boolean
+}
+
+// Enums
+enum SecurityNotificationType {
+  FAILED_LOGIN
+  ACCOUNT_LOCKOUT
+  SUSPICIOUS_ACTIVITY
+  SESSION_HIJACK
+}
+
+enum SecuritySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
