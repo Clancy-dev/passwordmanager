@@ -1299,40 +1299,40 @@ export default function PasswordManager() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         {/* Header */}
         <header className="bg-white shadow-sm border-b">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Password Manager</h1>
-                <p className="text-sm text-gray-600">Welcome back, {currentUser.username}</p>
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Password Manager</h1>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">Welcome back, {currentUser.username}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Notifications Bell */}
-              <Button variant="ghost" onClick={() => setCurrentPage("notifications")} className="relative">
-                <Bell className="h-5 w-5" />
+              <Button variant="ghost" onClick={() => setCurrentPage("notifications")} className="relative p-2">
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                 {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-xs"
                   >
-                    {unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </Badge>
                 )}
               </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-blue-500 text-white">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                      <AvatarFallback className="bg-blue-500 text-white text-sm sm:text-base">
                         {currentUser.username.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuContent className="w-48 sm:w-56" align="end">
                   <DropdownMenuItem onClick={() => setCurrentPage("profile")}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
@@ -1347,97 +1347,176 @@ export default function PasswordManager() {
           </div>
         </header>
 
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <div className="max-w-6xl mx-auto">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Passwords</h2>
-              <p className="text-gray-600">Securely store and manage your passwords</p>
+            <div className="mb-6 sm:mb-8 text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Your Passwords</h2>
+              <p className="text-sm sm:text-base text-gray-600">Securely store and manage your passwords</p>
             </div>
 
             {/* Search and Create Section */}
-            <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by email or description..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setCurrentPageNum(1)
-                  }}
-                  className="pl-10"
-                />
-              </div>
-
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Password
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Add New Password</DialogTitle>
-                    <DialogDescription>
-                      Create a new password entry. Your data is securely stored in the database.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="create-email">Email/Username</Label>
-                      <Input
-                        id="create-email"
-                        value={formData.email}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                        placeholder="Enter email or username"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="create-password">Password</Label>
-                      <div className="relative">
+            <div className="mb-6 space-y-4">
+              {/* Add Password Button - Shows first on mobile */}
+              <div className="flex justify-center sm:hidden">
+                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full max-w-sm flex items-center justify-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Password
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle>Add New Password</DialogTitle>
+                      <DialogDescription>
+                        Create a new password entry. Your data is securely stored in the database.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="create-email">Email/Username</Label>
                         <Input
-                          id="create-password"
-                          type={createPasswordVisible ? "text" : "password"}
-                          value={formData.password}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                          placeholder="Enter password"
-                          className="pr-10"
+                          id="create-email"
+                          value={formData.email}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                          placeholder="Enter email or username"
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setCreatePasswordVisible(!createPasswordVisible)}
-                        >
-                          {createPasswordVisible ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
+                      </div>
+                      <div>
+                        <Label htmlFor="create-password">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="create-password"
+                            type={createPasswordVisible ? "text" : "password"}
+                            value={formData.password}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                            placeholder="Enter password"
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setCreatePasswordVisible(!createPasswordVisible)}
+                          >
+                            {createPasswordVisible ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="create-description">Description</Label>
+                        <Textarea
+                          id="create-description"
+                          value={formData.description}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                          placeholder="Enter description (optional)"
+                          rows={3}
+                        />
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="create-description">Description</Label>
-                      <Textarea
-                        id="create-description"
-                        value={formData.description}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                        placeholder="Enter description (optional)"
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter className="flex gap-2">
-                    <Button variant="outline" onClick={clearForm}>
-                      Clear Form
-                    </Button>
-                    <Button onClick={handleCreateEntry}>Create Entry</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    <DialogFooter className="flex gap-2">
+                      <Button variant="outline" onClick={clearForm}>
+                        Clear Form
+                      </Button>
+                      <Button onClick={handleCreateEntry}>Create Entry</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Search Bar and Add Button for larger screens */}
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+                <div className="relative flex-1 max-w-full sm:max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search by email or description..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setCurrentPageNum(1)
+                    }}
+                    className="pl-10 w-full"
+                  />
+                </div>
+
+                {/* Add Password Button - Shows on larger screens */}
+                <div className="hidden sm:block flex-shrink-0">
+                  <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center gap-2 whitespace-nowrap">
+                        <Plus className="h-4 w-4" />
+                        Add Password
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Add New Password</DialogTitle>
+                        <DialogDescription>
+                          Create a new password entry. Your data is securely stored in the database.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="create-email-desktop">Email/Username</Label>
+                          <Input
+                            id="create-email-desktop"
+                            value={formData.email}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                            placeholder="Enter email or username"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-password-desktop">Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="create-password-desktop"
+                              type={createPasswordVisible ? "text" : "password"}
+                              value={formData.password}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                              placeholder="Enter password"
+                              className="pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setCreatePasswordVisible(!createPasswordVisible)}
+                            >
+                              {createPasswordVisible ? (
+                                <EyeOff className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-gray-400" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="create-description-desktop">Description</Label>
+                          <Textarea
+                            id="create-description-desktop"
+                            value={formData.description}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                            placeholder="Enter description (optional)"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter className="flex gap-2">
+                        <Button variant="outline" onClick={clearForm}>
+                          Clear Form
+                        </Button>
+                        <Button onClick={handleCreateEntry}>Create Entry</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
             </div>
 
             {/* Entries List */}
@@ -1685,7 +1764,7 @@ export default function PasswordManager() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the password entry for{" "}
+                This action cannot be undone. This will permanently delete the password entry for
                 <strong>{selectedEntry?.email}</strong>.
               </AlertDialogDescription>
             </AlertDialogHeader>
