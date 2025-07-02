@@ -24,10 +24,10 @@ export interface UpdateUserData {
   email?: string
   password?: string
   sessionTimeout?: number
-  resetToken?: string
-  resetTokenExpiry?: Date
+  resetToken?: string | null
+  resetTokenExpiry?: Date | null
   failedAttempts?: number
-  lockedUntil?: Date
+  lockedUntil?: Date | null // Changed from Date | undefined to Date | null
   deviceFingerprint?: string
 }
 

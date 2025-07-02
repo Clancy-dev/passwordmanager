@@ -5,7 +5,7 @@ import type { SecurityNotificationType, SecuritySeverity } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 
 export interface CreateSecurityNotificationData {
-  userId: string
+  userId: string // Can be "unknown" for failed attempts on non-existent accounts
   type: SecurityNotificationType
   title: string
   message: string
@@ -32,6 +32,15 @@ export interface CreateSecurityNotificationData {
 
 export async function createSecurityNotification(data: CreateSecurityNotificationData) {
   try {
+    // If userId is "unknown", we'll create a notification without linking to a user
+    // This handles cases where someone tries to login with a non-existent email
+    if (data.userId === "unknown") {
+      // For unknown users, we could either skip creating the notification
+      // or create it with a special handling. For now, let's skip it.
+      console.log("Skipping notification for unknown user:", data.attemptedEmail)
+      return { success: true, notification: null }
+    }
+
     const notification = await db.securityNotification.create({
       data: {
         userId: data.userId,

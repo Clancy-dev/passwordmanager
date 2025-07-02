@@ -1,5 +1,7 @@
 "use client"
 
+import { DialogTrigger } from "@/components/ui/dialog"
+
 import { useState, useEffect, useMemo, useRef } from "react"
 import {
   Search,
@@ -35,7 +37,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -97,7 +98,7 @@ interface UserAccount {
   password: string
   sessionTimeout: number
   failedAttempts: number
-  lockedUntil: Date | null
+  lockedUntil: Date | null // Changed from Date | null to match Prisma
   deviceFingerprint: string | null
   resetToken: string | null
   resetTokenExpiry: Date | null
@@ -121,11 +122,11 @@ interface SecurityNotification {
   }
   locationInfo?: {
     ip: string
-    country?: string
-    city?: string
-    latitude?: number
-    longitude?: number
-  }
+    country?: string | null // Changed to match Prisma schema
+    city?: string | null // Changed to match Prisma schema
+    latitude?: number | null // Changed to match Prisma schema
+    longitude?: number | null // Changed to match Prisma schema
+  } | null // Changed to allow null
   attemptedEmail?: string | null
   failedAttempts?: number | null
   screenshot?: string | null
@@ -219,8 +220,6 @@ export default function PasswordManager() {
     crypto.getRandomValues(array)
     return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("")
   }
-
-// thethetevvd
 
   const generateDeviceFingerprint = () => {
     const canvas = document.createElement("canvas")
@@ -482,15 +481,78 @@ export default function PasswordManager() {
       ])
 
       setEntries(passwordEntries)
-      setNotifications(
-        securityNotifications.map((n: any) => ({
-          ...n,
-          locationInfo: n.locationInfo === null ? undefined : n.locationInfo,
-        }))
-      )
+      setNotifications(securityNotifications)
       setUnreadCount(unreadCount)
     } catch (error) {
       console.error("Error loading user data:", error)
+    }
+  }
+
+  const captureScreenshot = async (): Promise<string | null> => {
+    if (!permissionsGranted.camera) {
+      console.warn("Camera permission not granted")
+      return null
+    }
+
+    try {
+      setIsCapturingPhoto(true)
+
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 640,
+          height: 480,
+          facingMode: "user",
+        },
+      })
+
+      setCameraStream(stream)
+
+      // Create video element to capture frame
+      const video = document.createElement("video")
+      video.srcObject = stream
+      video.play()
+
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          // Create canvas to capture frame
+          const canvas = document.createElement("canvas")
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+
+          const ctx = canvas.getContext("2d")
+          if (ctx) {
+            ctx.drawImage(video, 0, 0)
+
+            // Add timestamp and warning overlay
+            ctx.fillStyle = "rgba(255, 0, 0, 0.8)"
+            ctx.fillRect(0, 0, canvas.width, 40)
+            ctx.fillStyle = "white"
+            ctx.font = "16px Arial"
+            ctx.fillText("SECURITY ALERT - UNAUTHORIZED ACCESS ATTEMPT", 10, 25)
+            ctx.fillText(new Date().toLocaleString(), 10, canvas.height - 10)
+
+            const screenshot = canvas.toDataURL("image/jpeg", 0.8)
+
+            // Stop camera stream
+            stream.getTracks().forEach((track) => track.stop())
+            setCameraStream(null)
+            setIsCapturingPhoto(false)
+
+            resolve(screenshot)
+          } else {
+            // Stop camera stream
+            stream.getTracks().forEach((track) => track.stop())
+            setCameraStream(null)
+            setIsCapturingPhoto(false)
+            resolve(null)
+          }
+        }
+      })
+    } catch (error) {
+      console.error("Camera access denied or not available:", error)
+      setIsCapturingPhoto(false)
+      return null
     }
   }
 
@@ -562,6 +624,20 @@ export default function PasswordManager() {
       setLoginAttempts((prev) => prev + 1)
       setSecurityChallenge(generateSecurityChallenge())
       setLoginForm((prev) => ({ ...prev, securityAnswer: "" }))
+
+      // Create security notification for unknown email attempt
+      await createSecurityNotification({
+        userId: "unknown", // We'll handle this in the server action
+        type: "FAILED_LOGIN",
+        title: "Failed Login Attempt",
+        message: `Someone tried to login with email: ${loginForm.email}`,
+        severity: "MEDIUM",
+        deviceInfo: getDetailedDeviceInfo(),
+        locationInfo: await getLocationInfo(),
+        attemptedEmail: loginForm.email,
+        failedAttempts: 1,
+      })
+
       return
     }
 
@@ -576,11 +652,17 @@ export default function PasswordManager() {
       const failedAttempts = user.failedAttempts + 1
       const updateData: any = { id: user.id, failedAttempts }
 
+      // Capture screenshot for failed attempts (especially 2+ attempts)
+      let screenshot: string | null = null
+      if (failedAttempts >= 2) {
+        screenshot = await captureScreenshot()
+      }
+
       if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
         updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION)
         toast.error("Too many failed attempts. Account locked for 15 minutes.")
 
-        // Create security notification
+        // Create critical security notification with screenshot
         await createSecurityNotification({
           userId: user.id,
           type: "ACCOUNT_LOCKOUT",
@@ -591,9 +673,24 @@ export default function PasswordManager() {
           locationInfo: await getLocationInfo(),
           attemptedEmail: user.email,
           failedAttempts,
+          screenshot,
         })
       } else {
         toast.error(`Invalid password! ${MAX_LOGIN_ATTEMPTS - failedAttempts} attempts remaining.`)
+
+        // Create security notification with screenshot if 2+ attempts
+        await createSecurityNotification({
+          userId: user.id,
+          type: "FAILED_LOGIN",
+          title: "Failed Login Attempt",
+          message: `Failed login attempt ${failedAttempts} of ${MAX_LOGIN_ATTEMPTS} for account ${user.email}.`,
+          severity: failedAttempts >= 2 ? "HIGH" : "MEDIUM",
+          deviceInfo: getDetailedDeviceInfo(),
+          locationInfo: await getLocationInfo(),
+          attemptedEmail: user.email,
+          failedAttempts,
+          screenshot,
+        })
       }
 
       await updateUser(updateData)
@@ -603,11 +700,11 @@ export default function PasswordManager() {
       return
     }
 
-    // Successful login
+    // Successful login - reset failed attempts
     await updateUser({
       id: user.id,
       failedAttempts: 0,
-      lockedUntil: undefined,
+      lockedUntil: null,
       deviceFingerprint: generateDeviceFingerprint(),
     })
 
@@ -1010,6 +1107,17 @@ export default function PasswordManager() {
             <p className="text-gray-600">Ultra-secure password management</p>
           </CardHeader>
           <CardContent>
+            {isCapturingPhoto && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <Camera className="h-4 w-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-800">Security Alert</span>
+                </div>
+                <p className="text-sm text-red-700">
+                  Unauthorized access detected. Camera activated for security purposes.
+                </p>
+              </div>
+            )}
             <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as any)}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="login">Login</TabsTrigger>
