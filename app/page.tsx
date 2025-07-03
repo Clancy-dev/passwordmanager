@@ -1474,14 +1474,6 @@ export default function PasswordManager() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Session Timer */}
-              {sessionTimeRemaining > 0 && (
-                <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                  <Clock className="h-3 w-3" />
-                  {formatTimeRemaining(sessionTimeRemaining)}
-                </div>
-              )}
-
               {/* Notifications Bell */}
               <Button variant="ghost" onClick={() => setCurrentPage("notifications")} className="relative p-2">
                 <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
