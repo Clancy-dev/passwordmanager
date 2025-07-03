@@ -25,6 +25,7 @@ import {
   X,
   CheckCircle,
   XCircle,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -174,7 +175,9 @@ export default function PasswordManager() {
   // Session management
   const [lastActivity, setLastActivity] = useState<number>(Date.now())
   const [showSessionExpired, setShowSessionExpired] = useState(false)
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number>(0)
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionCheckRef = useRef<NodeJS.Timeout | null>(null)
 
   // Security states
   const [securityChallenge, setSecurityChallenge] = useState<string>("")
@@ -325,6 +328,72 @@ export default function PasswordManager() {
     return { isValid: true, message: "Password is strong" }
   }
 
+  // Session management functions
+  const updateActivity = () => {
+    setLastActivity(Date.now())
+  }
+
+  const startSessionTimer = (timeoutMinutes: number) => {
+    // Clear existing timers
+    if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current)
+    if (sessionCheckRef.current) clearInterval(sessionCheckRef.current)
+
+    const timeoutMs = timeoutMinutes * 60 * 1000
+    setSessionTimeRemaining(timeoutMs)
+
+    // Set main session timeout
+    sessionTimeoutRef.current = setTimeout(() => {
+      setShowSessionExpired(true)
+      handleSessionExpired()
+    }, timeoutMs)
+
+    // Update remaining time every second
+    sessionCheckRef.current = setInterval(() => {
+      const elapsed = Date.now() - lastActivity
+      const remaining = timeoutMs - elapsed
+
+      if (remaining <= 0) {
+        setSessionTimeRemaining(0)
+        if (sessionCheckRef.current) clearInterval(sessionCheckRef.current)
+      } else {
+        setSessionTimeRemaining(remaining)
+      }
+    }, 1000)
+  }
+
+  const resetSessionTimer = () => {
+    if (currentUser) {
+      updateActivity()
+      startSessionTimer(currentUser.sessionTimeout)
+    }
+  }
+
+  const handleSessionExpired = async () => {
+    // Clear all timers
+    if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current)
+    if (sessionCheckRef.current) clearInterval(sessionCheckRef.current)
+
+    // Clear session data
+    await clearSessionCookie()
+    setCurrentUser(null)
+    setEntries([])
+    setNotifications([])
+    setCurrentPage("auth")
+
+    toast.error("Session expired due to inactivity. Please log in again.")
+  }
+
+  const handleSessionExpiredDialogClose = () => {
+    setShowSessionExpired(false)
+    setCurrentPage("auth")
+  }
+
+  const formatTimeRemaining = (ms: number): string => {
+    const minutes = Math.floor(ms / 60000)
+    const seconds = Math.floor((ms % 60000) / 1000)
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
   // Permission functions
   const requestCameraPermission = async (): Promise<boolean> => {
     try {
@@ -463,6 +532,9 @@ export default function PasswordManager() {
         setCurrentUser(user)
         setCurrentPage("main")
         loadUserData(user.id)
+        // Start session timer for existing session
+        updateActivity()
+        startSessionTimer(user.sessionTimeout)
       } else {
         setCurrentPage("auth")
       }
@@ -602,6 +674,11 @@ export default function PasswordManager() {
     setCurrentUser(result.user!)
     setCurrentPage("main")
     setSignupForm({ username: "", email: "", password: "", confirmPassword: "" })
+
+    // Start session timer
+    updateActivity()
+    startSessionTimer(result.user!.sessionTimeout)
+
     toast.success("Account created successfully! Welcome to Password Manager!")
   }
 
@@ -726,11 +803,18 @@ export default function PasswordManager() {
     setLoginForm({ email: "", password: "", securityAnswer: "" })
     setLoginAttempts(0)
     loadUserData(user.id)
+
+    // Start session timer
+    updateActivity()
+    startSessionTimer(user.sessionTimeout)
+
     toast.success(`Welcome back, ${user.username}!`)
   }
 
   const handleLogout = async () => {
+    // Clear session timers
     if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current)
+    if (sessionCheckRef.current) clearInterval(sessionCheckRef.current)
 
     await clearSessionCookie()
     setCurrentUser(null)
@@ -746,6 +830,9 @@ export default function PasswordManager() {
       toast.error("Email and password are required!")
       return
     }
+
+    // Reset session timer on activity
+    resetSessionTimer()
 
     const result = await createPasswordEntry({
       userId: currentUser.id,
@@ -770,6 +857,9 @@ export default function PasswordManager() {
       return
     }
 
+    // Reset session timer on activity
+    resetSessionTimer()
+
     const result = await updatePasswordEntry({
       id: selectedEntry.id,
       email: formData.email.trim(),
@@ -791,6 +881,9 @@ export default function PasswordManager() {
   const handleDeleteEntry = async () => {
     if (!selectedEntry) return
 
+    // Reset session timer on activity
+    resetSessionTimer()
+
     const result = await deletePasswordEntry(selectedEntry.id)
 
     if (result.success) {
@@ -805,6 +898,9 @@ export default function PasswordManager() {
 
   // Notification functions
   const handleMarkNotificationAsRead = async (notificationId: string) => {
+    // Reset session timer on activity
+    resetSessionTimer()
+
     const result = await markNotificationAsRead(notificationId)
     if (result.success) {
       setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)))
@@ -815,6 +911,9 @@ export default function PasswordManager() {
   const handleMarkAllNotificationsAsRead = async () => {
     if (!currentUser) return
 
+    // Reset session timer on activity
+    resetSessionTimer()
+
     const result = await markAllNotificationsAsRead(currentUser.id)
     if (result.success) {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
@@ -823,6 +922,9 @@ export default function PasswordManager() {
   }
 
   const handleDeleteNotification = async (notificationId: string) => {
+    // Reset session timer on activity
+    resetSessionTimer()
+
     const result = await deleteSecurityNotification(notificationId)
     if (result.success) {
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
@@ -940,6 +1042,69 @@ export default function PasswordManager() {
       setSecurityChallenge(generateSecurityChallenge())
     }
   }, [currentPage, authMode])
+
+  // Activity tracking effect
+  useEffect(() => {
+    const handleActivity = () => {
+      if (currentUser && (currentPage === "main" || currentPage === "profile" || currentPage === "notifications")) {
+        resetSessionTimer()
+      }
+    }
+
+    // Track various user activities
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"]
+
+    events.forEach((event) => {
+      document.addEventListener(event, handleActivity, true)
+    })
+
+    return () => {
+      events.forEach((event) => {
+        document.removeEventListener(event, handleActivity, true)
+      })
+    }
+  }, [currentUser, currentPage])
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current)
+      if (sessionCheckRef.current) clearInterval(sessionCheckRef.current)
+    }
+  }, [])
+
+  // Session Expired Dialog
+  if (showSessionExpired) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-900 to-black flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-2 border-red-500 shadow-2xl">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Clock className="h-12 w-12 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-red-800">Session Expired</CardTitle>
+            <p className="text-red-600 mt-2">Your session has expired due to inactivity.</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h3 className="text-lg font-semibold text-red-900 mb-3">Security Notice</h3>
+              <div className="text-sm text-red-700 space-y-2">
+                <p>For your security, you have been automatically logged out after a period of inactivity.</p>
+                <p>Please log in again to continue using the password manager.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={handleSessionExpiredDialogClose} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                🔐 Login Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <Toaster position="top-right" />
+      </div>
+    )
+  }
 
   // Consent Dialog
   if (showConsentDialog || currentPage === "consent") {
@@ -1309,6 +1474,14 @@ export default function PasswordManager() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Session Timer */}
+              {sessionTimeRemaining > 0 && (
+                <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <Clock className="h-3 w-3" />
+                  {formatTimeRemaining(sessionTimeRemaining)}
+                </div>
+              )}
+
               {/* Notifications Bell */}
               <Button variant="ghost" onClick={() => setCurrentPage("notifications")} className="relative p-2">
                 <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1439,6 +1612,7 @@ export default function PasswordManager() {
                     onChange={(e) => {
                       setSearchQuery(e.target.value)
                       setCurrentPageNum(1)
+                      resetSessionTimer()
                     }}
                     className="pl-10 w-full"
                   />
@@ -1605,6 +1779,7 @@ export default function PasswordManager() {
                     onValueChange={(value) => {
                       setItemsPerPage(Number(value))
                       setCurrentPageNum(1)
+                      resetSessionTimer()
                     }}
                   >
                     <SelectTrigger className="w-20">
@@ -1625,7 +1800,10 @@ export default function PasswordManager() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPageNum((prev) => Math.max(1, prev - 1))}
+                    onClick={() => {
+                      setCurrentPageNum((prev) => Math.max(1, prev - 1))
+                      resetSessionTimer()
+                    }}
                     disabled={currentPageNum === 1}
                   >
                     Previous
@@ -1636,7 +1814,10 @@ export default function PasswordManager() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPageNum((prev) => Math.min(totalPages, prev + 1))}
+                    onClick={() => {
+                      setCurrentPageNum((prev) => Math.min(totalPages, prev + 1))
+                      resetSessionTimer()
+                    }}
                     disabled={currentPageNum === totalPages}
                   >
                     Next
@@ -1764,7 +1945,7 @@ export default function PasswordManager() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the password entry for
+                This action cannot be undone. This will permanently delete the password entry for{" "}
                 <strong>{selectedEntry?.email}</strong>.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1982,8 +2163,6 @@ export default function PasswordManager() {
     )
   }
 
-  // Add the Profile Page section right after the Notifications Page and before the final return null
-
   // Profile Page
   if (currentPage === "profile" && currentUser) {
     return (
@@ -2025,7 +2204,10 @@ export default function PasswordManager() {
                       <Input
                         id="profile-username"
                         value={profileForm.username || currentUser.username}
-                        onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
+                        onChange={(e) => {
+                          setProfileForm((prev) => ({ ...prev, username: e.target.value }))
+                          resetSessionTimer()
+                        }}
                         placeholder="Enter your username"
                       />
                     </div>
@@ -2035,7 +2217,10 @@ export default function PasswordManager() {
                         id="profile-email"
                         type="email"
                         value={profileForm.email || currentUser.email}
-                        onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
+                        onChange={(e) => {
+                          setProfileForm((prev) => ({ ...prev, email: e.target.value }))
+                          resetSessionTimer()
+                        }}
                         placeholder="Enter your email"
                       />
                     </div>
@@ -2043,9 +2228,10 @@ export default function PasswordManager() {
                       <Label htmlFor="profile-session-timeout">Session Timeout (minutes)</Label>
                       <Select
                         value={(profileForm.sessionTimeout || currentUser.sessionTimeout).toString()}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
                           setProfileForm((prev) => ({ ...prev, sessionTimeout: Number(value) }))
-                        }
+                          resetSessionTimer()
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -2064,6 +2250,7 @@ export default function PasswordManager() {
                   <div className="pt-4 border-t">
                     <Button
                       onClick={async () => {
+                        resetSessionTimer()
                         const result = await updateUser({
                           id: currentUser.id,
                           username: profileForm.username || currentUser.username,
@@ -2072,6 +2259,10 @@ export default function PasswordManager() {
                         })
                         if (result.success) {
                           setCurrentUser(result.user!)
+                          // Restart session timer with new timeout if changed
+                          if (profileForm.sessionTimeout && profileForm.sessionTimeout !== currentUser.sessionTimeout) {
+                            startSessionTimer(profileForm.sessionTimeout)
+                          }
                           toast.success("Profile updated successfully!")
                         } else {
                           toast.error(result.error || "Failed to update profile")
@@ -2095,7 +2286,10 @@ export default function PasswordManager() {
                           id="profile-old-password"
                           type={showProfileOldPassword ? "text" : "password"}
                           value={profileForm.oldPassword}
-                          onChange={(e) => setProfileForm((prev) => ({ ...prev, oldPassword: e.target.value }))}
+                          onChange={(e) => {
+                            setProfileForm((prev) => ({ ...prev, oldPassword: e.target.value }))
+                            resetSessionTimer()
+                          }}
                           placeholder="Enter current password"
                           className="pr-10"
                         />
@@ -2121,7 +2315,10 @@ export default function PasswordManager() {
                           id="profile-new-password"
                           type={showProfileNewPassword ? "text" : "password"}
                           value={profileForm.newPassword}
-                          onChange={(e) => setProfileForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                          onChange={(e) => {
+                            setProfileForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                            resetSessionTimer()
+                          }}
                           placeholder="Enter new password"
                           className="pr-10"
                         />
@@ -2158,7 +2355,10 @@ export default function PasswordManager() {
                           id="profile-confirm-password"
                           type={showProfileConfirmPassword ? "text" : "password"}
                           value={profileForm.confirmPassword}
-                          onChange={(e) => setProfileForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                          onChange={(e) => {
+                            setProfileForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                            resetSessionTimer()
+                          }}
                           placeholder="Confirm new password"
                           className="pr-10"
                         />
@@ -2182,6 +2382,7 @@ export default function PasswordManager() {
                   <div className="pt-4 border-t">
                     <Button
                       onClick={async () => {
+                        resetSessionTimer()
                         if (!profileForm.oldPassword || !profileForm.newPassword || !profileForm.confirmPassword) {
                           toast.error("All password fields are required!")
                           return
